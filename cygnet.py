@@ -31,7 +31,7 @@ class RootInterface():
         return self.evnum
 
     def get_noisy_image(self, idx):
-        return self.file[f"pic_run1_ev{idx}"].to_numpy()[0]
+        return self.file[f"pic_run1_ev{idx}"].to_numpy()[0].T
 
     def get_clean_image(self, idx):
         ix_event = self.ixs[idx]
@@ -40,7 +40,7 @@ class RootInterface():
         image = np.zeros(self.p_shape, dtype=np.uint16)
         image[ix_event, iy_event] = 1 if self.is_binary else iz_event
 
-        return image
+        return image.T
 
     def plot_noisy_image(self, idx, num_title = -1):
         if num_title == -1:
@@ -48,7 +48,7 @@ class RootInterface():
         img = self.get_noisy_image(idx)
         plt.figure(figsize = (8,8))
         plt.title(f"EVENT #{num_title}")
-        plt.imshow(img.T, vmin = picmin, vmax = picmax)
+        plt.imshow(img, vmin = picmin, vmax = picmax)
         plt.show()
     
     def plot_clean_image(self, idx, num_title = -1):
@@ -57,7 +57,7 @@ class RootInterface():
         img = self.get_clean_image(idx)
         plt.figure(figsize = (8,8))
         plt.title(f"redpix of EVENT #{num_title}")
-        plt.imshow(img.T)
+        plt.imshow(img)
         plt.show()
 
     def plot_event(self, idx, num_title = -1):
@@ -67,9 +67,9 @@ class RootInterface():
         clean = self.get_clean_image(idx)
 
         fig, axs = plt.subplots(1, 2, figsize=(15,15))
-        axs[0].imshow(noisy.T, vmin = picmin, vmax = picmax)
+        axs[0].imshow(noisy, vmin = picmin, vmax = picmax)
         axs[0].set_title(f"EVENT #{num_title}")
-        axs[1].imshow(clean.T)
+        axs[1].imshow(clean)
         axs[1].set_title(f"redpix of EVENT #{num_title}")
 
 class RootManager():
