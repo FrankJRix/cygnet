@@ -216,13 +216,11 @@ class Net(nn.Module):
     def __init__(self, base=16):
         super().__init__()
         # Encoder
-        self.down = nn.AvgPool2d(2)
         self.enc1 = conv_block(1,      base)       # 16
         self.enc2 = conv_block(base,   base*2)     # 32
         self.enc3 = conv_block(base*2, base*4)     # 64
         self.enc4 = conv_block(base*4, base*8)     # 128
         self.pool = nn.MaxPool2d(2)
-        self.upsample = nn.Upsample(scale_factor=2, mode='nearest')
 
         # Bottleneck
         self.bottleneck = conv_block(base*8, base*16)  # 256
@@ -245,8 +243,7 @@ class Net(nn.Module):
 
     def forward(self, x):
         # Encode
-        e1 = self.enc1(self.down(x))
-        #e1 = self.enc1(x)
+        e1 = self.enc1(x)
         e2 = self.enc2(self.pool(e1))
         e3 = self.enc3(self.pool(e2))
         e4 = self.enc4(self.pool(e3))
@@ -260,7 +257,7 @@ class Net(nn.Module):
         d2 = self.dec2(torch.cat([self.up2(d3), e2], dim=1))
         d1 = self.dec1(torch.cat([self.up1(d2), e1], dim=1))
 
-        return self.upsample(self.head(d1))  # raw logits, (N, 1, H, W)
+        return self.head(d1)  # raw logits, (N, 1, H, W)
 
 def focal_loss(pred, target, alpha=0.25, gamma=2.0):
     # target: binary float mask from redpixels > 0
