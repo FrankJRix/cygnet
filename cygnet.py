@@ -99,6 +99,7 @@ class RootManager():
         path = os.path.join(self.data_dir, file)
         self.ifc = RootInterface(path)
         self.current_file = file
+        gc.collect()
     
     def update_file_pointer(self, idx):
         if idx >= self.total_events or idx < 0:
@@ -159,9 +160,6 @@ downscaler_input = transforms.Compose([transforms.ToImage(),
                                        ])
 downscaler_target = transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float32, scale=False), maxpooler, transforms.ToDtype(torch.uint16, scale=False)])
 
-#transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float32, scale=True)])
-# downscaler_input = None
-# downscaler_target = None
 class ImageDataset(Dataset):
     def __init__(self, dir, transform_input=downscaler_input, transform_target=downscaler_target):
         self.rmngr = RootManager(dir)
