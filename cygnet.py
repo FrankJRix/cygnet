@@ -2,13 +2,13 @@ import numpy as np
 import uproot
 import matplotlib.pyplot as plt
 import os, gc, time
+import imageio.v3 as iio
 import torch
 from torch import nn
 import torch.nn.functional as F
 import torchvision
 import torchvision.transforms.v2 as transforms
 from torch.utils.data import DataLoader, Dataset
-from PIL import Image as im
 
 picmin = 198
 picmax = 220
@@ -162,7 +162,7 @@ downscaler_input = transforms.Compose([transforms.ToImage(),
                                        ])
 downscaler_target = transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float32, scale=False), maxpooler, transforms.ToDtype(torch.uint16, scale=False)])
 
-class ImageDataset(Dataset):
+class RootDataset(Dataset):
     def __init__(self, dir, transform_input=downscaler_input, transform_target=downscaler_target):
         self.rmngr = RootManager(dir)
         self.transform_input = transform_input
@@ -179,6 +179,24 @@ class ImageDataset(Dataset):
         
         return img, target
 
+class Cygnoset(Dataset):
+    def __init__(self, dir, transform_input=None, transform_target=None):
+        self.data_dir = dir
+        self.images = os.listdir(dir)
+        self.transform_input = transform_input
+        self.transform_target = transform_target
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        image_path = os.path.join(self.data_dir, self.images[idx])
+        image = iio.imread(image_path)
+        if self.transform_input and self.transform_target:
+            img = self.transform_input(img)
+            target = self.transform_target(target)
+        
+        return img, target
 
 # Timing utilities
 start_time = None
@@ -201,13 +219,15 @@ def end_timer_and_print(local_msg):
 
 # Network
 
-def conv_block(in_ch, out_ch):
+def conv_block(in_ch, out_ch, groups=8):
     return nn.Sequential(
         nn.Conv2d(in_ch, out_ch, 3, padding=1, bias=False),
         nn.BatchNorm2d(out_ch),
+        # nn.InstanceNorm2d(out_ch, affine=True),
         nn.ReLU(inplace=True),
         nn.Conv2d(out_ch, out_ch, 3, padding=1, bias=False),
         nn.BatchNorm2d(out_ch),
+        # nn.InstanceNorm2d(out_ch, affine=True),
         nn.ReLU(inplace=True),
     )
 
@@ -219,79 +239,6 @@ class Net(nn.Module):
         self.enc2 = conv_block(base,   base*2)     # 32
         self.enc3 = conv_block(base*2, base*4)     # 64
         self.enc4 = conv_block(base*4, base*8)     # 128
-        self.pool = nn.MaxPool2d(2)
-
-        # Bottleneck
-        self.bottleneck = conv_block(base*8, base*16)  # 256
-
-        # Decoder (lightweight — just upsample + one conv_block)
-        self.up4 = nn.ConvTranspose2d(base*16, base*8, 2, stride=2)
-        self.dec4 = conv_block(base*16, base*8)
-
-        self.up3 = nn.ConvTranspose2d(base*8, base*4, 2, stride=2)
-        self.dec3 = conv_block(base*8,  base*4)
-
-        self.up2 = nn.ConvTranspose2d(base*4, base*2, 2, stride=2)
-        self.dec2 = conv_block(base*4,  base*2)
-
-        self.up1 = nn.ConvTranspose2d(base*2, base, 2, stride=2)
-        self.dec1 = conv_block(base*2,  base)
-
-        # Single output head
-        self.head = nn.Conv2d(base, 1, 1)
-
-    def forward(self, x):
-        # Encode
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
-
-        # Bottleneck
-        b = self.bottleneck(self.pool(e4))
-
-        # Decode with skips
-        d4 = self.dec4(torch.cat([self.up4(b),  e4], dim=1))
-        d3 = self.dec3(torch.cat([self.up3(d4), e3], dim=1))
-        d2 = self.dec2(torch.cat([self.up2(d3), e2], dim=1))
-        d1 = self.dec1(torch.cat([self.up1(d2), e1], dim=1))
-
-        return self.head(d1)  # raw logits, (N, 1, H, W)
-
-# nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=1, groups=in_ch, bias=False)
-# nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False)
-
-def first_depthwise_conv_block(in_ch, out_ch):
-    return nn.Sequential(
-        nn.Conv2d(in_ch, out_ch, 3, padding=1, bias=False),
-        nn.BatchNorm2d(out_ch),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1, groups=in_ch, bias=False),
-        nn.Conv2d(out_ch, out_ch, kernel_size=1, bias=False),
-        nn.BatchNorm2d(out_ch),
-        nn.ReLU(inplace=True),
-    )
-
-def depthwise_conv_block(in_ch, out_ch):
-    return nn.Sequential(
-        nn.Conv2d(in_ch, in_ch, kernel_size=3, padding=1, groups=in_ch, bias=False),
-        nn.Conv2d(in_ch, out_ch, kernel_size=1, bias=False),
-        nn.BatchNorm2d(out_ch),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(out_ch, out_ch, kernel_size=3, padding=1, groups=in_ch, bias=False),
-        nn.Conv2d(out_ch, out_ch, kernel_size=1, bias=False),
-        nn.BatchNorm2d(out_ch),
-        nn.ReLU(inplace=True),
-    )
-
-class dwNet(nn.Module):
-    def __init__(self, base=16):
-        super().__init__()
-        # Encoder
-        self.enc1 = first_depthwise_conv_block(1,      base)       # 16
-        self.enc2 = depthwise_conv_block(base,   base*2)     # 32
-        self.enc3 = depthwise_conv_block(base*2, base*4)     # 64
-        self.enc4 = depthwise_conv_block(base*4, base*8)     # 128
         self.pool = nn.MaxPool2d(2)
 
         # Bottleneck
