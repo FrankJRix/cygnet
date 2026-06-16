@@ -40,6 +40,8 @@ class RootInterface():
         image = np.zeros(self.p_shape, dtype=np.uint16)
         image[ix_event, iy_event] = 1 if self.is_binary else iz_event
 
+        gc.collect()
+
         return image.T
 
     def plot_noisy_image(self, idx, num_title = -1):
