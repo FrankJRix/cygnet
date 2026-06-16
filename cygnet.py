@@ -6,7 +6,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import torchvision
-from torchvision import transforms
+import torchvision.transforms.v2 as transforms
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image as im
 
@@ -138,19 +138,44 @@ class RootManager():
     def get_pair(self, idx):
         return self.get_noisy(idx), self.get_clean(idx)
 
+
+
+def print_through(x):
+    print("\n")
+    print(x)
+    print("\n")
+    return x
+
+avgpooler = torch.nn.AvgPool2d(kernel_size=2)
+maxpooler = torch.nn.MaxPool2d(kernel_size=2)
+downscaler_input = transforms.Compose([transforms.ToImage(), 
+                                       transforms.ToDtype(torch.float32, scale=False), 
+                                       avgpooler, 
+                                    #    print_through, 
+                                       torch.round, 
+                                    #    print_through, 
+                                       transforms.ToDtype(torch.uint16, scale=False), 
+                                    #    print_through
+                                       ])
+downscaler_target = transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float32, scale=False), maxpooler, transforms.ToDtype(torch.uint16, scale=False)])
+
+#transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float32, scale=True)])
+# downscaler_input = None
+# downscaler_target = None
 class ImageDataset(Dataset):
-    def __init__(self, dir, transform=None):
+    def __init__(self, dir, transform_input=downscaler_input, transform_target=downscaler_target):
         self.rmngr = RootManager(dir)
-        self.transform = transform
+        self.transform_input = transform_input
+        self.transform_target = transform_target
 
     def __len__(self):
         return self.rmngr.total_events
 
     def __getitem__(self, idx):
         img, target = self.rmngr.get_pair(idx)
-        if self.transform:
-            img = self.transform(img)
-            target = self.transform(target)
+        if self.transform_input and self.transform_target:
+            img = self.transform_input(img)
+            target = self.transform_target(target)
         
         return img, target
 
