@@ -149,31 +149,55 @@ def print_through(x):
     print("\n")
     return x
 
+
+class AvgTransform(nn.Module):
+    def __init__(self, k_size):
+        super().__init__()
+        self.pooling = torch.nn.AvgPool2d(kernel_size=k_size)
+
+    def forward(self, x):
+        return self.pooling(x)
+
+class MaxTransform(nn.Module):
+    def __init__(self, k_size):
+        super().__init__()
+        self.pooling = torch.nn.MaxPool2d(kernel_size=k_size)
+
+    def forward(self, x):
+        return self.pooling(x)
+
 avgpooler = torch.nn.AvgPool2d(kernel_size=2)
 maxpooler = torch.nn.MaxPool2d(kernel_size=2)
-downscaler_input = transforms.Compose([transforms.ToImage(), 
-                                       transforms.ToDtype(torch.float32, scale=False), 
-                                       avgpooler, 
-                                    #    print_through, 
-                                       torch.round, 
-                                    #    print_through, 
-                                       transforms.ToDtype(torch.uint16, scale=False), 
-                                    #    print_through
-                                       ])
-downscaler_target = transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float32, scale=False), maxpooler, transforms.ToDtype(torch.uint16, scale=False)])
+
+def input_transform_builder(pool_k_size):
+    downscaler = transforms.Compose([transforms.ToImage(), 
+                                        transforms.ToDtype(torch.float32, scale=False), 
+                                        AvgTransform(pool_k_size),
+                                        torch.round, 
+                                        transforms.ToDtype(torch.uint16, scale=False), 
+                                        ])
+    return downscaler
+
+def target_transform_builder(pool_k_size):
+    downscaler = transforms.Compose([transforms.ToImage(), 
+                                            transforms.ToDtype(torch.float32, scale=False), 
+                                            MaxTransform(pool_k_size), 
+                                            transforms.ToDtype(torch.uint16, scale=False)])
+    return downscaler
 
 class RootDataset(Dataset):
-    def __init__(self, dir, transform_input=downscaler_input, transform_target=downscaler_target):
+    def __init__(self, dir, pool_k_size, raw=False):
         self.rmngr = RootManager(dir)
-        self.transform_input = transform_input
-        self.transform_target = transform_target
+        self.transform_input = input_transform_builder(pool_k_size)
+        self.transform_target = target_transform_builder(pool_k_size)
+        self.raw = raw
 
     def __len__(self):
         return self.rmngr.total_events
 
     def __getitem__(self, idx):
         img, target = self.rmngr.get_pair(idx)
-        if self.transform_input and self.transform_target:
+        if not self.raw:
             img = self.transform_input(img)
             target = self.transform_target(target)
         
