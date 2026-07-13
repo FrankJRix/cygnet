@@ -37,8 +37,8 @@ class RootInterface():
         ix_event = self.ixs[idx]
         iy_event = self.iys[idx]
         iz_event = self.izs[idx]
-        image = np.zeros(self.p_shape, dtype=np.uint16)
-        image[ix_event, iy_event] = 1 if self.is_binary else iz_event
+        image = np.zeros(self.p_shape, dtype=np.uint8 if self.is_binary else np.uint16)
+        image[ix_event, iy_event] = 255 if self.is_binary else iz_event
 
         gc.collect()
 
@@ -182,7 +182,7 @@ def target_transform_builder(pool_k_size):
     downscaler = transforms.Compose([transforms.ToImage(), 
                                             transforms.ToDtype(torch.float32, scale=False), 
                                             MaxTransform(pool_k_size), 
-                                            transforms.ToDtype(torch.uint16, scale=False)])
+                                            transforms.ToDtype(torch.uint8, scale=False)])
     return downscaler
 
 class RootDataset(Dataset):
