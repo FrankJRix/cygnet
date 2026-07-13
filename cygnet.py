@@ -332,7 +332,9 @@ class Net(nn.Module):
         self.dc2 = DoubleDown2(base, base*2)
         self.dc3 = DoubleDown3(base*2, base*4)
         self.dc4 = DoubleDown3(base*4, base*8)
+        self.dc5 = DoubleDown3(base*8, base*8)
         
+        self.uc5 = DoubleUp3(base*8, base*8)
         self.uc4 = DoubleUp3(base*8, base*4)
         self.uc3 = DoubleUp3(base*4, base*2)
         self.uc2 = DoubleUp2(base*2, base)
@@ -345,7 +347,9 @@ class Net(nn.Module):
         x, mp2_indices, shape2 = self.dc2(x)
         x, mp3_indices, shape3 = self.dc3(x)
         x, mp4_indices, shape4 = self.dc4(x)
+        x, mp5_indices, shape5 = self.dc5(x)
 
+        x = self.uc5(x, mp5_indices, output_size=shape5)
         x = self.uc4(x, mp4_indices, output_size=shape4)
         x = self.uc3(x, mp3_indices, output_size=shape3)
         x = self.uc2(x, mp2_indices, output_size=shape2)
