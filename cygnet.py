@@ -166,8 +166,18 @@ class MaxTransform(nn.Module):
     def forward(self, x):
         return self.pooling(x)
 
-avgpooler = torch.nn.AvgPool2d(kernel_size=2)
-maxpooler = torch.nn.MaxPool2d(kernel_size=2)
+class InflateTransform(nn.Module):
+    def __init__(self, radius):
+        super().__init__()
+        
+        k_size = 2 * radius + 1
+        self.pooling = torch.nn.MaxPool2d(kernel_size=k_size, padding=radius)
+
+    def forward(self, x):
+        return self.pooling(x)
+
+#avgpooler = torch.nn.AvgPool2d(kernel_size=2)
+#maxpooler = torch.nn.MaxPool2d(kernel_size=2)
 
 def input_transform_builder(pool_k_size):
     downscaler = transforms.Compose([transforms.ToImage(), 
@@ -182,6 +192,13 @@ def target_transform_builder(pool_k_size):
     downscaler = transforms.Compose([transforms.ToImage(), 
                                             transforms.ToDtype(torch.float32, scale=False), 
                                             MaxTransform(pool_k_size), 
+                                            transforms.ToDtype(torch.uint8, scale=False)])
+    return downscaler
+
+def inflate_transform_builder(radius):
+    downscaler = transforms.Compose([transforms.ToImage(), 
+                                            transforms.ToDtype(torch.float32, scale=False), 
+                                            InflateTransform(radius), 
                                             transforms.ToDtype(torch.uint8, scale=False)])
     return downscaler
 
