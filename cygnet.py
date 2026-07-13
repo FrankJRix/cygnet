@@ -219,62 +219,115 @@ def end_timer_and_print(local_msg):
 
 # Network
 
-def conv_block(in_ch, out_ch, groups=8):
-    return nn.Sequential(
-        nn.Conv2d(in_ch, out_ch, 3, padding=1, bias=False),
-        nn.BatchNorm2d(out_ch),
-        nn.ReLU(inplace=True),
-        nn.Conv2d(out_ch, out_ch, 3, padding=1, bias=False),
-        nn.BatchNorm2d(out_ch),
-        nn.ReLU(inplace=True),
-    )
+class DoubleDown2(nn.Module):
+    def __init__(self, chin, chout):
+        super().__init__()
+        self.seq = nn.Sequential(
+            nn.Conv2d(chin, chout, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chout),
+            nn.ReLU(),
+            nn.Conv2d(chout, chout, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chout),
+            nn.ReLU(),
+        )
+        self.mp = nn.MaxPool2d(2, return_indices=True)
+
+    def forward(self, x):
+        y = self.seq(x)
+        pool_shape = y.shape
+        y, indices = self.mp(y)
+        return y, indices, pool_shape
+
+class DoubleDown3(nn.Module):
+    def __init__(self, chin, chout):
+        super().__init__()
+        self.seq = nn.Sequential(
+            nn.Conv2d(chin, chout, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chout),
+            nn.ReLU(),
+            nn.Conv2d(chout, chout, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chout),
+            nn.ReLU(),
+            nn.Conv2d(chout, chout, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chout),
+            nn.ReLU(),
+        )
+        self.mp = nn.MaxPool2d(2, return_indices=True)
+
+    def forward(self, x):
+        y = self.seq(x)
+        pool_shape = y.shape
+        y, indices = self.mp(y)
+        return y, indices, pool_shape
+
+class DoubleUp2(nn.Module):
+    def __init__(self, chin, chout):
+        super().__init__()
+        self.seq = nn.Sequential(
+            nn.Conv2d(chin, chin, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chin),
+            nn.ReLU(),
+            nn.Conv2d(chin, chout, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chout),
+            nn.ReLU(),
+        )
+        self.mup = nn.MaxUnpool2d(2)
+        
+    def forward(self, x, indices, output_size):
+        y = self.mup(x, indices, output_size=output_size)
+        y = self.seq(y)
+        return y
+
+class DoubleUp3(nn.Module):
+    def __init__(self, chin, chout):
+        super().__init__()
+        self.seq = nn.Sequential(
+            nn.Conv2d(chin, chin, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chin),
+            nn.ReLU(),
+            nn.Conv2d(chin, chin, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chin),
+            nn.ReLU(),
+            nn.Conv2d(chin, chout, 3, padding=1, bias=False),
+            nn.BatchNorm2d(chout),
+            nn.ReLU(),
+        )
+        self.mup = nn.MaxUnpool2d(2)
+        
+    def forward(self, x, indices, output_size):
+        y = self.mup(x, indices, output_size=output_size)
+        y = self.seq(y)
+        return y
 
 class Net(nn.Module):
     def __init__(self, base=16):
         super().__init__()
-        # Encoder
-        self.enc1 = conv_block(1,      base)       # 16
-        self.enc2 = conv_block(base,   base*2)     # 32
-        self.enc3 = conv_block(base*2, base*4)     # 64
-        self.enc4 = conv_block(base*4, base*8)     # 128
-        self.pool = nn.MaxPool2d(2)
+        self.bn_input = nn.BatchNorm2d(1)
+        
+        self.dc1 = DoubleDown2(1, base)
+        self.dc2 = DoubleDown2(base, base*2)
+        self.dc3 = DoubleDown3(base*2, base*4)
+        self.dc4 = DoubleDown3(base*4, base*8)
+        
+        self.uc4 = DoubleUp3(base*8, base*4)
+        self.uc3 = DoubleUp3(base*4, base*2)
+        self.uc2 = DoubleUp2(base*2, base)
+        self.uc1 = DoubleUp2(base, 1)
 
-        # Bottleneck
-        self.bottleneck = conv_block(base*8, base*16)  # 256
+    def forward(self, batch: torch.Tensor):
+        x = self.bn_input(batch)
 
-        # Decoder (lightweight — just upsample + one conv_block)
-        self.up4 = nn.ConvTranspose2d(base*16, base*8, 2, stride=2)
-        self.dec4 = conv_block(base*16, base*8)
+        x, mp1_indices, shape1 = self.dc1(x)
+        x, mp2_indices, shape2 = self.dc2(x)
+        x, mp3_indices, shape3 = self.dc3(x)
+        x, mp4_indices, shape4 = self.dc4(x)
 
-        self.up3 = nn.ConvTranspose2d(base*8, base*4, 2, stride=2)
-        self.dec3 = conv_block(base*8,  base*4)
-
-        self.up2 = nn.ConvTranspose2d(base*4, base*2, 2, stride=2)
-        self.dec2 = conv_block(base*4,  base*2)
-
-        self.up1 = nn.ConvTranspose2d(base*2, base, 2, stride=2)
-        self.dec1 = conv_block(base*2,  base)
-
-        # Single output head
-        self.head = nn.Conv2d(base, 1, 1)
-
-    def forward(self, x):
-        # Encode
-        e1 = self.enc1(x)
-        e2 = self.enc2(self.pool(e1))
-        e3 = self.enc3(self.pool(e2))
-        e4 = self.enc4(self.pool(e3))
-
-        # Bottleneck
-        b = self.bottleneck(self.pool(e4))
-
-        # Decode with skips
-        d4 = self.dec4(torch.cat([self.up4(b),  e4], dim=1))
-        d3 = self.dec3(torch.cat([self.up3(d4), e3], dim=1))
-        d2 = self.dec2(torch.cat([self.up2(d3), e2], dim=1))
-        d1 = self.dec1(torch.cat([self.up1(d2), e1], dim=1))
-
-        return self.head(d1)  # raw logits, (N, 1, H, W)
+        x = self.uc4(x, mp4_indices, output_size=shape4)
+        x = self.uc3(x, mp3_indices, output_size=shape3)
+        x = self.uc2(x, mp2_indices, output_size=shape2)
+        x = self.uc1(x, mp1_indices, output_size=shape1)
+        
+        return x
 
 def focal_loss(pred, target, alpha=0.25, gamma=2.0):
     # target: binary float mask from redpixels > 0
