@@ -171,7 +171,7 @@ class InflateTransform(nn.Module):
         super().__init__()
         
         k_size = 2 * radius + 1
-        self.pooling = torch.nn.MaxPool2d(kernel_size=k_size, padding=radius)
+        self.pooling = torch.nn.MaxPool2d(kernel_size=k_size, padding=radius, stride=1)
 
     def forward(self, x):
         return self.pooling(x)
