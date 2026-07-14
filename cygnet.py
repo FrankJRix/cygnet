@@ -220,10 +220,11 @@ class RootDataset(Dataset):
         
         return img, target
 
+itrtr = transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float32, scale=False)])
 trtr = transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float32, scale=True)])
 
 class CygnoSet(Dataset):
-    def __init__(self, input_dir, target_dir, transform_input=trtr, transform_target=trtr):
+    def __init__(self, input_dir, target_dir, transform_input=itrtr, transform_target=trtr):
         self.input_dir = input_dir
         self.input_images = os.listdir(input_dir)
         self.target_dir = target_dir
@@ -251,6 +252,13 @@ class CygnoSet(Dataset):
             target = self.transform_target(target)
         
         return input, target
+
+def debug_plot(noisy, mask):
+    plt.figure(figsize = (12,12))
+    plt.title(f"MASKED")
+    plt.imshow(noisy, vmin = picmin, vmax = picmax)
+    plt.imshow(mask, alpha=0.5)
+    plt.show()
 
 # Timing utilities
 start_time = None
