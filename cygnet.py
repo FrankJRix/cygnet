@@ -220,24 +220,37 @@ class RootDataset(Dataset):
         
         return img, target
 
-class Cygnoset(Dataset):
-    def __init__(self, dir, transform_input=None, transform_target=None):
-        self.data_dir = dir
-        self.images = os.listdir(dir)
+trtr = transforms.Compose([transforms.ToImage(), transforms.ToDtype(torch.float32, scale=True)])
+
+class CygnoSet(Dataset):
+    def __init__(self, input_dir, target_dir, transform_input=trtr, transform_target=trtr):
+        self.input_dir = input_dir
+        self.input_images = os.listdir(input_dir)
+        self.target_dir = target_dir
+        self.target_images = os.listdir(target_dir)
+
+        self.mask_prefix = self.target_images[0].split("_")[0]
+        print(self.mask_prefix)
+
         self.transform_input = transform_input
         self.transform_target = transform_target
 
     def __len__(self):
-        return len(self.images)
+        return len(self.input_images)
 
     def __getitem__(self, idx):
-        image_path = os.path.join(self.data_dir, self.images[idx])
-        image = iio.imread(image_path)
+        input_image_path = os.path.join(self.input_dir, f"i_{idx}.png")
+        input = iio.imread(input_image_path)
+        target_image_path = os.path.join(self.target_dir, f"{self.mask_prefix}_{idx}.png")
+        target = iio.imread(target_image_path)
+
+        print(input_image_path, target_image_path)
+        
         if self.transform_input and self.transform_target:
-            img = self.transform_input(img)
+            input = self.transform_input(input)
             target = self.transform_target(target)
         
-        return img, target
+        return input, target
 
 # Timing utilities
 start_time = None
@@ -374,13 +387,43 @@ class Net(nn.Module):
         
         return x
 
-def focal_loss(pred, target, alpha=0.25, gamma=2.0):
-    # target: binary float mask from redpixels > 0
+# Metrics and Losses
+
+def focal_loss(pred, target, alpha=0.75, gamma=2.0):
     bce = F.binary_cross_entropy_with_logits(pred, target, reduction='none')
     pt  = torch.exp(-bce)
     return (alpha * (1 - pt)**gamma * bce).mean()
 
-def kl_loss(y_actual, x_pred, eps=1e-8):
-    xx = x_pred.flatten()
-    yy = y_actual.flatten()
-    return ((yy - xx) * torch.log(yy / (xx + eps))).sum() / xx.numel()
+def IoUMetric(pred, gt, softmax=False):
+    # Run softmax if input is logits.
+    if softmax is True:
+        pred = nn.Softmax(dim=1)(pred)
+    # end if
+    
+    # Add the one-hot encoded masks for all 3 output channels
+    # (for all the classes) to a tensor named 'gt' (ground truth).
+    gt = torch.cat([ (gt == i) for i in range(3) ], dim=1)
+    # print(f"[2] Pred shape: {pred.shape}, gt shape: {gt.shape}")
+
+    intersection = gt * pred
+    union = gt + pred - intersection
+
+    # Compute the sum over all the dimensions except for the batch dimension.
+    iou = (intersection.sum(dim=(1, 2, 3)) + 0.001) / (union.sum(dim=(1, 2, 3)) + 0.001)
+    
+    # Compute the mean over the batch dimension.
+    return iou.mean()
+
+class IoULoss(nn.Module):
+    def __init__(self, softmax=False):
+        super().__init__()
+        self.softmax = softmax
+    
+    # pred => Predictions (logits, B, 3, H, W)
+    # gt => Ground Truth Labales (B, 1, H, W)
+    def forward(self, pred, gt):
+        # return 1.0 - IoUMetric(pred, gt, self.softmax)
+        # Compute the negative log loss for stable training.
+        return -(IoUMetric(pred, gt, self.softmax).log())
+    # end def
+# end class
