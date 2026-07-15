@@ -231,7 +231,7 @@ class CygnoSet(Dataset):
         self.target_images = os.listdir(target_dir)
 
         self.mask_prefix = self.target_images[0].split("_")[0]
-        print(self.mask_prefix)
+        #print(self.mask_prefix)
 
         self.transform_input = transform_input
         self.transform_target = transform_target
@@ -245,7 +245,7 @@ class CygnoSet(Dataset):
         target_image_path = os.path.join(self.target_dir, f"{self.mask_prefix}_{idx}.png")
         target = iio.imread(target_image_path)
 
-        print(input_image_path, target_image_path)
+        #print(input_image_path, target_image_path)
         
         if self.transform_input and self.transform_target:
             input = self.transform_input(input)
@@ -257,7 +257,7 @@ def debug_plot(noisy, mask):
     plt.figure(figsize = (12,12))
     plt.title(f"MASKED")
     plt.imshow(noisy, vmin = picmin, vmax = picmax)
-    plt.imshow(mask, alpha=0.5)
+    plt.imshow(mask, alpha=0.1)
     plt.show()
 
 # Timing utilities
