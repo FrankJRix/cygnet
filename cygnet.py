@@ -445,11 +445,11 @@ class Net(nn.Module):
 		x, mp1_indices, shape1 = self.dc1(x)
 		x, mp2_indices, shape2 = self.dc2(x)
 		x, mp3_indices, shape3 = self.dc3(x)
-		x, mp4_indices, shape4 = self.dc4(x)
+		#x, mp4_indices, shape4 = self.dc4(x)
 		#x, mp5_indices, shape5 = self.dc5(x)
 
 		#x = self.uc5(x, mp5_indices, output_size=shape5)
-		x = self.uc4(x, mp4_indices, output_size=shape4)
+		#x = self.uc4(x, mp4_indices, output_size=shape4)
 		x = self.uc3(x, mp3_indices, output_size=shape3)
 		x = self.uc2(x, mp2_indices, output_size=shape2)
 		x = self.uc1(x, mp1_indices, output_size=shape1)
@@ -462,6 +462,26 @@ def focal_loss(pred, target, alpha=0.3, gamma=2.0):
 	bce = F.binary_cross_entropy_with_logits(pred, target, reduction='none')
 	pt  = torch.exp(-bce)
 	return (alpha * (1 - pt)**gamma * bce).mean()
+
+def binary_focal_loss(inputs, targets, alpha=0.25, gamma=2.0):
+	""" Focal loss for binary classification. """
+	probs = torch.sigmoid(inputs)
+	targets = targets.float()
+
+	# Compute binary cross entropy
+	bce_loss = F.binary_cross_entropy_with_logits(inputs, targets, reduction='none')
+
+	# Compute focal weight
+	p_t = probs * targets + (1 - probs) * (1 - targets)
+	focal_weight = (1 - p_t) ** gamma
+
+	alpha_t = alpha * targets + (1 - alpha) * (1 - targets)
+	bce_loss = alpha_t * bce_loss
+
+	# Apply focal loss weighting
+	loss = focal_weight * bce_loss
+
+	return loss.mean()
 
 def IoUMetric(pred, gt, softmax=False):
 	# Run softmax if input is logits.
