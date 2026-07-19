@@ -296,11 +296,11 @@ class CygnoSet(Dataset):
 
 		self.print_stats()
 
-def debug_plot(noisy, mask):
+def debug_plot(noisy, mask, alpha = 0.1, vmin = picmin, vmax = picmax):
 	plt.figure(figsize = (12,12))
 	plt.title(f"MASKED")
-	plt.imshow(noisy, vmin = picmin, vmax = picmax)
-	plt.imshow(mask, alpha=0.1)
+	plt.imshow(noisy, vmin = vmin, vmax = vmax)
+	plt.imshow(mask, alpha=alpha)
 	plt.show()
 
 # Timing utilities
