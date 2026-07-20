@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from torchvision import tv_tensors
 import torchvision.transforms.v2 as transforms
 from torch.utils.data import DataLoader, Dataset
+import midas.file_reader
 
 picmin = 198
 picmax = 220
@@ -303,6 +304,14 @@ def debug_plot(noisy, mask, alpha = 0.1, vmin = picmin, vmax = picmax):
 	plt.imshow(mask, alpha=alpha)
 	plt.show()
 
+def open_mid(path):
+	if os.path.exists(path):
+		f = midas.file_reader.MidasFile(path)
+	else:
+		raise(RuntimeError())
+
+	return f
+
 # Timing utilities
 start_time = None
 
@@ -456,6 +465,40 @@ class Net(nn.Module):
 		
 		return x
 
+class SkipNet(nn.Module):
+	def __init__(self, base):
+		super().__init__()
+		self.bn_input = nn.BatchNorm2d(1)
+		
+		self.dc1 = DoubleDown2(1, base)
+		self.dc2 = DoubleDown2(base, base*2)
+		self.dc3 = DoubleDown3(base*2, base*4)
+		self.dc4 = DoubleDown3(base*4, base*8)
+		self.dc5 = DoubleDown3(base*8, base*8)
+		
+		self.uc5 = DoubleUp3(base*8, base*8)
+		self.uc4 = DoubleUp3(base*8, base*4)
+		self.uc3 = DoubleUp3(base*4, base*2)
+		self.uc2 = DoubleUp2(base*2, base)
+		self.uc1 = DoubleUp2Out(base, 1)
+
+	def forward(self, batch: torch.Tensor):
+		x = self.bn_input(batch)
+
+		x1, mp1_indices, shape1 = self.dc1(x)
+		x2, mp2_indices, shape2 = self.dc2(x1)
+		x3, mp3_indices, shape3 = self.dc3(x2)
+		x4, mp4_indices, shape4 = self.dc4(x3)
+		#x, mp5_indices, shape5 = self.dc5(x)
+
+		#x = self.uc5(x, mp5_indices, output_size=shape5)
+		x = self.uc4(x4, mp4_indices, output_size=shape4)
+		x = self.uc3(x3 + x, mp3_indices, output_size=shape3)
+		x = self.uc2(x + x2, mp2_indices, output_size=shape2)
+		x = self.uc1(x + x1, mp1_indices, output_size=shape1)
+		
+		return x
+
 # Metrics and Losses
 
 def focal_loss(pred, target, alpha=0.3, gamma=2.0):
@@ -516,19 +559,19 @@ class IoULoss(nn.Module):
 		return -(IoUMetric(pred, gt, self.softmax).log())
 
 def dice_coeff(input: Tensor, target: Tensor, reduce_batch_first: bool = False, epsilon: float = 1e-6):
-    # Average of Dice coefficient for all batches, or for a single mask
-    assert input.size() == target.size()
-    assert input.dim() == 3 or not reduce_batch_first
+	# Average of Dice coefficient for all batches, or for a single mask
+	assert input.size() == target.size()
+	assert input.dim() == 3 or not reduce_batch_first
 
-    sum_dim = (-1, -2) if input.dim() == 2 or not reduce_batch_first else (-1, -2, -3)
+	sum_dim = (-1, -2) if input.dim() == 2 or not reduce_batch_first else (-1, -2, -3)
 
-    inter = 2 * (input * target).sum(dim=sum_dim)
-    sets_sum = input.sum(dim=sum_dim) + target.sum(dim=sum_dim)
-    sets_sum = torch.where(sets_sum == 0, inter, sets_sum)
+	inter = 2 * (input * target).sum(dim=sum_dim)
+	sets_sum = input.sum(dim=sum_dim) + target.sum(dim=sum_dim)
+	sets_sum = torch.where(sets_sum == 0, inter, sets_sum)
 
-    dice = (inter + epsilon) / (sets_sum + epsilon)
-    return dice.mean()
+	dice = (inter + epsilon) / (sets_sum + epsilon)
+	return dice.mean()
 
 def dice_loss(input: Tensor, target: Tensor):
-    # Dice loss (objective to minimize) between 0 and 1
-    return 1 - dice_coeff(torch.sigmoid(input), target, reduce_batch_first=False)
+	# Dice loss (objective to minimize) between 0 and 1
+	return 1 - dice_coeff(torch.sigmoid(input), target, reduce_batch_first=False)
