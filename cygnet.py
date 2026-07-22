@@ -332,7 +332,7 @@ def end_timer_and_print(local_msg):
 
 
 # Network
-
+dout = 0.3
 class DoubleDown2(nn.Module):
 	def __init__(self, chin, chout):
 		super().__init__()
@@ -340,9 +340,11 @@ class DoubleDown2(nn.Module):
 			nn.Conv2d(chin, chout, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chout),
 			nn.ReLU(),
+			nn.Dropout(dout),
 			nn.Conv2d(chout, chout, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chout),
 			nn.ReLU(),
+			nn.Dropout(dout),
 		)
 		self.mp = nn.MaxPool2d(2, return_indices=True)
 
@@ -359,12 +361,15 @@ class DoubleDown3(nn.Module):
 			nn.Conv2d(chin, chout, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chout),
 			nn.ReLU(),
+			nn.Dropout(dout),
 			nn.Conv2d(chout, chout, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chout),
 			nn.ReLU(),
+			nn.Dropout(dout),
 			nn.Conv2d(chout, chout, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chout),
 			nn.ReLU(),
+			nn.Dropout(dout),
 		)
 		self.mp = nn.MaxPool2d(2, return_indices=True)
 
@@ -381,9 +386,11 @@ class DoubleUp2(nn.Module):
 			nn.Conv2d(chin, chin, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chin),
 			nn.ReLU(),
+			nn.Dropout(dout),
 			nn.Conv2d(chin, chout, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chout),
 			nn.ReLU(),
+			nn.Dropout(dout),
 		)
 		self.mup = nn.MaxUnpool2d(2)
 		
@@ -399,12 +406,15 @@ class DoubleUp3(nn.Module):
 			nn.Conv2d(chin, chin, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chin),
 			nn.ReLU(),
+			nn.Dropout(dout),
 			nn.Conv2d(chin, chin, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chin),
 			nn.ReLU(),
+			nn.Dropout(dout),
 			nn.Conv2d(chin, chout, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chout),
 			nn.ReLU(),
+			nn.Dropout(dout),
 		)
 		self.mup = nn.MaxUnpool2d(2)
 		
@@ -420,6 +430,7 @@ class DoubleUp2Out(nn.Module):
 			nn.Conv2d(chin, chin, 3, padding=1, bias=False),
 			nn.BatchNorm2d(chin),
 			nn.ReLU(),
+			nn.Dropout(dout),
 			nn.Conv2d(chin, chout, 3, padding=1, bias=False),
 			#nn.BatchNorm2d(chout),
 			#nn.ReLU(),
