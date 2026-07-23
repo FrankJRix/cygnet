@@ -11,6 +11,7 @@ from torchvision import tv_tensors
 import torchvision.transforms.v2 as transforms
 from torch.utils.data import DataLoader, Dataset
 import midas.file_reader
+import datetime
 
 picmin = 198
 picmax = 220
@@ -312,7 +313,7 @@ def open_mid(path):
 
 	return f
 
-# Timing utilities
+# Utilities
 start_time = None
 
 def start_timer():
@@ -331,8 +332,29 @@ def end_timer_and_print(local_msg):
 	print(f"Max memory used by tensors = {torch.cuda.max_memory_allocated() / 1024**3:.3f} Gbytes")
 
 
+class SaveBestModel:
+	def __init__(self, best_valid_loss=float('inf')):
+		self.best_valid_loss = best_valid_loss
+		self.t = datetime.datetime.now().strftime('%Y_%b_%d__%H:%M')
+		
+	def __call__(
+		self, current_valid_loss, 
+		epoch, model, optimizer, criterion, base
+	):
+		if current_valid_loss < self.best_valid_loss:
+			self.best_valid_loss = current_valid_loss
+			print(f"\nBest validation loss: {self.best_valid_loss}")
+			print(f"\nSaving best model for epoch: {epoch+1}\n")
+
+			torch.save({'model' : model,
+				'epoch': epoch+1,
+				'model_state_dict': model.state_dict(),
+				'optimizer_state_dict': optimizer.state_dict(),
+				'loss': criterion,
+				}, f'saved_models/{self.t}_best_model_base{base}_res_drop.pt')
+
 # Network
-dout = 0.3
+dout = 0.
 class DoubleDown2(nn.Module):
 	def __init__(self, chin, chout):
 		super().__init__()
