@@ -1,4 +1,5 @@
 /data/*
+/tmp/*
 /data_processed/*
 /.vscode/*
 /__pycache__/*
