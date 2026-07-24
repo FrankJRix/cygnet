@@ -233,6 +233,7 @@ class CygnoSet(Dataset):
 		self.target_dir = target_dir
 		self.target_images = os.listdir(target_dir)
 
+		self.input_prefix = self.input_images[0].split("_")[0]
 		self.mask_prefix = self.target_images[0].split("_")[0]
 		#print(self.mask_prefix)
 
@@ -245,7 +246,7 @@ class CygnoSet(Dataset):
 		return len(self.input_images)
 	
 	def get_raw_item(self, idx):
-		input_image_path = os.path.join(self.input_dir, f"i_{idx}.png")
+		input_image_path = os.path.join(self.input_dir, f"{self.input_prefix}_{idx}.png")
 		input = iio.imread(input_image_path)
 		target_image_path = os.path.join(self.target_dir, f"{self.mask_prefix}_{idx}.png")
 		target = iio.imread(target_image_path)
@@ -303,6 +304,12 @@ def debug_plot(noisy, mask, alpha = 0.1, vmin = picmin, vmax = picmax):
 	plt.title(f"MASKED")
 	plt.imshow(noisy, vmin = vmin, vmax = vmax)
 	plt.imshow(mask, alpha=alpha)
+	plt.show()
+
+def quickplot(img, title="", vmax=picmax, vmin=picmin):
+	plt.figure()
+	plt.imshow(img, vmax=vmax, vmin=vmin)
+	plt.title(title)
 	plt.show()
 
 def open_mid(path):
