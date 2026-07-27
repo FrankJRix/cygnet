@@ -299,17 +299,21 @@ class CygnoSet(Dataset):
 
 		self.print_stats()
 
+################### Utilities
+
 def debug_plot(noisy, mask, alpha = 0.1, vmin = picmin, vmax = picmax):
 	plt.figure(figsize = (12,12))
 	plt.title(f"MASKED")
 	plt.imshow(noisy, vmin = vmin, vmax = vmax)
 	plt.imshow(mask, alpha=alpha)
+	plt.tight_layout()
 	plt.show()
 
 def quickplot(img, title="", vmax=picmax, vmin=picmin):
 	plt.figure()
 	plt.imshow(img, vmax=vmax, vmin=vmin)
 	plt.title(title)
+	plt.tight_layout()
 	plt.show()
 
 def open_mid(path):
@@ -320,7 +324,6 @@ def open_mid(path):
 
 	return f
 
-# Utilities
 start_time = None
 
 def start_timer():
