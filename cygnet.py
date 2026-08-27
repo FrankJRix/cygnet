@@ -16,6 +16,8 @@ import datetime
 picmin = 198
 picmax = 220
 
+figures_path = "/home/frx/cygnet/tmp/figures/"
+
 class RootInterface():
 	def __init__(self, path, is_binary=True):
 		self.load_file(path)
