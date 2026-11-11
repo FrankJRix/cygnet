@@ -1,0 +1,8 @@
+# Core versions available during CPU verification; not the original thesis environment.
+# Install a matching torch/torchvision pair for your CUDA platform if needed.
+numpy==2.2.6
+torch==2.7.1
+torchvision==0.22.1
+uproot==5.6.2
+matplotlib==3.10.3
+imageio==2.37.0

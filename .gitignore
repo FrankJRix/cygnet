@@ -5,3 +5,9 @@
 /__pycache__/*
 /dummy/*
 /saved_models/*
+# Local environments and generated artifacts
+.venv/
+*.egg-info/
+.ipynb_checkpoints/
+**/__pycache__/
+*.py[cod]
