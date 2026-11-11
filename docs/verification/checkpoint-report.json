@@ -1,0 +1,40 @@
+{
+  "checkpoint_sha256": "7b2dd9c1aab68114a7b571d225cf52cfda0cd0569dc44f4fc4eb096564cb82c3",
+  "model": "SkipNet",
+  "base": 16,
+  "epoch": 15,
+  "checkpoint_keys": [
+    "epoch",
+    "loss",
+    "model",
+    "model_state_dict",
+    "optimizer_state_dict"
+  ],
+  "registered_parameters": 1842850,
+  "state_dict_load": "strict; all keys matched",
+  "parameter_and_buffer_values": "all finite",
+  "input_shape": [
+    1,
+    1,
+    576,
+    1024
+  ],
+  "output_shape": [
+    1,
+    1,
+    576,
+    1024
+  ],
+  "output_values": "all finite",
+  "artificial_probability_range": [
+    0.11780655384063721,
+    1.0
+  ],
+  "artificial_selected_pixel_fraction": 0.9999949137369791,
+  "input_batchnorm_running_mean": [
+    0.0030489687342196703
+  ],
+  "threshold": 0.15,
+  "data": "Artificial line plus Gaussian noise; not detector data or validated simulation",
+  "interpretation": "Technical inference check only; no physics performance metrics computed"
+}

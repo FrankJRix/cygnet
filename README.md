@@ -71,6 +71,13 @@ Start with [the walkthrough notebook](examples/walkthrough.ipynb), then consult
 how to supply detector data and checkpoints. Core CPU versions used for
 verification are recorded in `requirements-tested.txt`.
 
+## Supplied checkpoint
+
+The author-provided checkpoint was verified as `SkipNet(16)`, epoch 15. It loads
+strictly and runs at the thesis input size. See the [checkpoint guide](docs/checkpoint.md)
+for the reproducible loading example and its technical check report. Weights remain
+external; the artificial-input diagnostic is not a physics validation.
+
 ## Repository map
 
 | Location | Purpose |

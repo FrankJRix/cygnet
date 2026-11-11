@@ -38,3 +38,10 @@ On the prepared CPU environment (PyTorch 2.7.1, torchvision 0.22.1):
 
 The GitHub Actions workflow is provided but has not yet run remotely. Historical
 research notebooks were not rerun without the external datasets and checkpoints.
+
+## Checkpoint follow-up
+
+The separately supplied epoch-15 `SkipNet(16)` checkpoint was loaded and exercised
+on CPU at the thesis input dimensions. Two additional checkpoint-format checks
+bring the suite to eight passing tests. See [checkpoint.md](checkpoint.md) for the
+report and the limits of artificial-input testing. No weights were added to Git.

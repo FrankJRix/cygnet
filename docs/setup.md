@@ -58,3 +58,6 @@ The synthetic demo never loads external weights.
 
 The repository does not include data or trained models, and the cleanup does not
 establish redistribution rights for collaboration data or thesis illustrations.
+
+The [checkpoint guide](checkpoint.md) provides a restricted loader for the supplied
+historical payload and an optional plain-weight export. The weights are external.
